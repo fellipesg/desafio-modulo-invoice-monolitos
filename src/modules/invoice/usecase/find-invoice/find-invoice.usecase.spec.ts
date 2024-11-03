@@ -39,7 +39,7 @@ const MockRepository = () => {
 
 describe("Find invoice use case unit test", () => {
 
-  it("should find a client", async () => {
+  it("should find an invoice", async () => {
 
     const repository = MockRepository()
     const usecase = new FindInvoiceUseCase(repository)
