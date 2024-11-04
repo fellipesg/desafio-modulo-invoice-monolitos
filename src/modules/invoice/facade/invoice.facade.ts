@@ -3,7 +3,7 @@ import InvoiceGateway from "../gateway/invoice.gateway";
 import InvoiceFacadeInterface, {
   FindInvoiceFacadeOutputDTO,
 } from "./invoice.facade.interface";
-
+import { GenerateInvoiceUseCaseInputDto, GenerateInvoiceUseCaseOutputDto } from "../usecase/generate-invoice/generate-invoice.usecase.dto";
 export default class InvoiceFacade implements InvoiceFacadeInterface {
   constructor(
     private _invoiceRepository: InvoiceGateway,
@@ -12,8 +12,8 @@ export default class InvoiceFacade implements InvoiceFacadeInterface {
   ) {}
 
   async create(
-    invoice: GenerateInvoiceFacadeInputDto
-  ): Promise<GenerateInvoiceFacadeOutputDto> {
+    invoice: GenerateInvoiceUseCaseInputDto
+  ): Promise<GenerateInvoiceUseCaseOutputDto> {
     return await this._generateInvoiceUseCase.execute(invoice);
   }
 
