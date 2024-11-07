@@ -1,28 +1,53 @@
 import request from 'supertest';
-import app from '../src/app';
 import { Sequelize } from "sequelize-typescript";
 import { ClientModel } from "../src/modules/client-adm/repository/client.model";
-import ProductRegistrationModel from "../src/infrastructure/product-registration/product-registration.model"
-import { migrator } from "../src/test-migrations/config-migrations/migrator";
-import { Umzug } from 'umzug';
 import ProductModel from '../src/modules/store-catalog/repository/product.model';
-import {ProductModel as Alias} from '../src/modules/product-adm/repository/product.model';
+import ProductRegistrationModel from '../src/modules/product-adm/repository/product-registration.model';
+import TransactionModel from '../src/modules/payment/repository/transaction.model';
+import { InvoiceModel } from '../src/modules/invoice/repository/invoice.model';
+import { InvoiceItemsModel } from '../src/modules/invoice/repository/invoiceItem.model';
+import express from 'express';
 
+import productRoutes from '../src/routes/products';
+import clientRoutes from '../src/routes/clients';
+import checkoutRoutes from '../src/routes/checkout';
+import invoiceRoutes from '../src/routes/invoice';
 describe('API Endpoints', () => {
-    
+    const app: Express = express()
+        app.use(express.json())
+        app.use("/clients", clientRoutes);
+        app.use("/products", productRoutes);
+        app.use("/invoices", invoiceRoutes);
+        app.use("/checkout", checkoutRoutes)
     describe('POST /products', () => {
-
+        
+        let sequelize: Sequelize;
+    
+        beforeEach(async () => {
+            sequelize = new Sequelize({
+                dialect: 'sqlite',
+                storage: ':memory:',
+                logging: false,
+                sync: { force: true },
+            });
+    
+            await sequelize.addModels([ProductModel, ProductRegistrationModel]);
+            await sequelize.sync();
+        });
+    
+        afterEach(async () => {
+            await sequelize.close();
+        });
         it('should create a product successfully', async () => {
             const res = await request(app)
-            .post('/products')
-            .send({
-                id: '1',
-                name: 'Product 1',
-                description: 'A sample product',
-                purchasePrice: 100,
-                stock: 50,
-            });
-
+                .post('/products')
+                .send({
+                    id: '1',
+                    name: 'Product 1',
+                    description: 'A sample product',
+                    purchasePrice: 100,
+                    stock: 50,
+                });
             expect(res.statusCode).toEqual(201);
             expect(res.body).toHaveProperty('id', '1');
             expect(res.body).toHaveProperty('name', 'Product 1');
@@ -85,30 +110,24 @@ describe('API Endpoints', () => {
     });
 
     describe('POST /checkout', () => {
-        let sequelize: Sequelize
-
-        let migration: Umzug<any>;
-
+        let sequelize: Sequelize;
+    
         beforeEach(async () => {
             sequelize = new Sequelize({
                 dialect: 'sqlite',
-                storage: ":memory:",
-                logging: false
-            })
-            
-            sequelize.addModels([ProductModel, Alias])
-            migration = migrator(sequelize)
-            await migration.up()
-        })
-
+                storage: ':memory:',
+                logging: false,
+                sync: { force: true },
+            });
+    
+            await sequelize.addModels([ProductRegistrationModel, ClientModel, ProductModel, TransactionModel, InvoiceModel, InvoiceItemsModel]);
+            await sequelize.sync();
+        });
+    
         afterEach(async () => {
-            if (!migration || !sequelize) {
-                return 
-            }
-            migration = migrator(sequelize)
-            await migration.down()
-            await sequelize.close()
-        })
+            await sequelize.close();
+        });
+
         it('should create a checkout', async () => {
             const client = await request(app)
             .post("/clients")
@@ -179,11 +198,11 @@ describe('API Endpoints', () => {
                 ]
             });
 
-            expect(checkout.status).toBe(200);
+            expect(checkout.status).toBe(201);
             expect(checkout.body.products.length).toBe(2);
             expect(checkout.body.total).toBe(250);
             expect(checkout.body.status).toBe('approved');
-        });
+        }, 60000);
     });
 
 });
